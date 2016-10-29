@@ -1,16 +1,16 @@
 # MSWinPrint.py
 # Copyright (c) 2004-2012 Chris Gonnerman
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
-# 
+#
 # Redistributions of source code must retain the above copyright notice, this
 # list of conditions and the following disclaimer.  Redistributions in binary
 # form must reproduce the above copyright notice, this list of conditions and
 # the following disclaimer in the documentation and/or other materials
 # provided with the distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 # ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -29,17 +29,18 @@ output on Windows 2K/XP/2003 hosts.
 
 document is a class for creating and running print jobs.
 
-listprinters() returns a list of printer names.  The default printer is the 
+listprinters() returns a list of printer names.  The default printer is the
 first element of the list, and all other printers follow in alphabetical order.
 
 desc(printer) returns a dictionary containing the descriptive fields
-for the named printer.  
+for the named printer.
 
 getfont(name, size) returns a win32ui font object for the named
 font scaled to the given size.  Font substitution may have been
 done by Windows, so don't be surprised if you don't get what you
 asked for.
 """
+import win32gui, win32ui, win32print, win32con
 
 # "constants" for use with printer setup calls
 
@@ -49,8 +50,6 @@ LOGPIXELSX = 88
 LOGPIXELSY = 90
 PHYSICALWIDTH = 110
 PHYSICALHEIGHT = 111
-
-import win32gui, win32ui, win32print, win32con
 
 try:
     from PIL import ImageWin
@@ -62,38 +61,38 @@ scale_factor = 20
 prdict = None
 
 paper_sizes = {
-    "letter":       1,
-    "lettersmall":  2,
-    "tabloid":      3,
-    "ledger":       4,
-    "legal":        5,
-    "statement":    6,
-    "executive":    7,
-    "a3":           8,
-    "a4":           9,
-    "envelope9":   19,
-    "envelope10":  20,
-    "envelope11":  21,
-    "envelope12":  22,
-    "envelope14":  23,
-    "fanfold":     39,
+    "letter": 1,
+    "lettersmall": 2,
+    "tabloid": 3,
+    "ledger": 4,
+    "legal": 5,
+    "statement": 6,
+    "executive": 7,
+    "a3": 8,
+    "a4": 9,
+    "envelope9": 19,
+    "envelope10": 20,
+    "envelope11": 21,
+    "envelope12": 22,
+    "envelope14": 23,
+    "fanfold": 39,
 }
 
 orientations = {
-    "portrait":     1,
-    "landscape":    2,
+    "portrait": 1,
+    "landscape": 2,
 }
 
 duplexes = {
-    "normal":       1,
-    "none":         1,
-    "long":         2,
-    "short":        3,
+    "normal": 1,
+    "none": 1,
+    "long": 2,
+    "short": 3,
 }
 
-class document:
 
-    def __init__(self, printer = None, papersize = None, orientation = None, duplex = None):
+class Document:
+    def __init__(self, printer=None, papersize=None, orientation=None, duplex=None):
         self.dc = None
         self.font = None
         self.printer = printer
@@ -111,7 +110,7 @@ class document:
             rc.append(int(p * scale_factor))
         return tuple(rc)
 
-    def begin_document(self, desc = "MSWinPrint.py print job"):
+    def begin_document(self, desc="MSWinPrint.py print job"):
 
         # open the printer
         if self.printer is None:
@@ -142,21 +141,21 @@ class document:
         # else:
         #     self.dc.CreatePrinterDC()
 
-        self.dc.SetMapMode(win32con.MM_TWIPS) # hundredths of inches
+        self.dc.SetMapMode(win32con.MM_TWIPS)  # hundredths of inches
         self.dc.StartDoc(desc)
-        self.pen = win32ui.CreatePen(0, int(scale_factor), 0L)
+        self.pen = win32ui.CreatePen(0, int(scale_factor), 0)
         self.dc.SelectObject(self.pen)
         self.page = 1
 
     def end_document(self):
         if self.page == 0:
-            return # document was never started
+            return  # document was never started
         self.dc.EndDoc()
         del self.dc
 
     def end_page(self):
         if self.page == 0:
-            return # nothing on the page
+            return  # nothing on the page
         self.dc.EndPage()
         self.page += 1
 
@@ -187,9 +186,9 @@ class document:
         if self.page == 0:
             self.begin_document()
         self.dc.TextOut(scale_factor * position[0],
-            -1 * scale_factor * position[1], text)
+                        -1 * scale_factor * position[1], text)
 
-    def setfont(self, name, size, bold = None):
+    def setfont(self, name, size, bold=None):
         if self.page == 0:
             self.begin_document()
         wt = 400
@@ -199,17 +198,17 @@ class document:
         self.dc.SelectObject(self.font)
 
     def image(self, position, image, size):
-        "print PIL image at position with given size"
+        """print PIL image at position with given size"""
         if ImageWin is None:
-            raise NotImplementedError, "PIL required for image method"
+            raise NotImplementedError("PIL required for image method")
         if self.page == 0:
             self.begin_document()
         dib = ImageWin.Dib(image)
         endpos = (position[0] + size[0], position[1] + size[1])
-        dest = (position[0] * scale_factor, 
-               -1 * position[1] * scale_factor,
-               endpos[0] * scale_factor, 
-               -1 * endpos[1] * scale_factor)
+        dest = (position[0] * scale_factor,
+                -1 * position[1] * scale_factor,
+                endpos[0] * scale_factor,
+                -1 * endpos[1] * scale_factor)
         dib.draw(self.hdc, dest)
 
     def setink(self, ink):
@@ -218,11 +217,10 @@ class document:
     def setfill(self, onoff):
         pass
 
+
 def build_dict():
     global prdict
-    lst = win32print.EnumPrinters(
-        win32print.PRINTER_ENUM_CONNECTIONS
-        + win32print.PRINTER_ENUM_LOCAL)
+    lst = win32print.EnumPrinters(win32print.PRINTER_ENUM_CONNECTIONS + win32print.PRINTER_ENUM_LOCAL)
     prdict = {}
     for flags, description, name, comment in lst:
         prdict[name] = {}
@@ -230,30 +228,32 @@ def build_dict():
         prdict[name]["description"] = description
         prdict[name]["comment"] = comment
 
+
 def listprinters():
     dft = win32print.GetDefaultPrinter()
     if prdict is None:
         build_dict()
-    keys = prdict.keys()
-    keys.sort()
-    rc = [ dft ]
-    for k in keys:
+    sorted(prdict)
+    rc = [dft]
+    for k in prdict.keys():
         if k != dft:
             rc.append(k)
     return rc
 
+
 def desc(name):
-    if prdict == None:
+    if prdict is None:
         listprinters()
     return prdict[name]
 
-def getfont(name, size, weight = 400):
+
+def getfont(name, size, weight=400):
     return win32ui.CreateFont({
         "name": name,
         "height": scale_factor * size,
         "weight": weight,
     })
-
+    
 
 if __name__ == "__main__":
 
